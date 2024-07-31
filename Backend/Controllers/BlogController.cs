@@ -36,13 +36,7 @@ namespace BlogOnline.Controllers
             var blog = await _blogService.GetBlogByIdAsync(id);
             return Ok(blog);
         }
-        //[HttpGet]
-        //public async Task<IActionResult> CreateBlog()
-        //{
-        //    var locationList = await _locationService.GetAllLocationAsync();
-        //    var categoryList = await _categoryService.GetAllCategoryAsync();
-        //    return ;
-        //}
+    
 
         [HttpPost("add")]
         public async Task<IActionResult> CreateBlog([FromForm] BlogDto form)
@@ -57,6 +51,7 @@ namespace BlogOnline.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", e.Message));
             }
         }
+
         [HttpDelete("remove/{id}")]
         public async Task<IActionResult> RemoveBlog([FromRoute] Guid id)
         {
@@ -72,22 +67,11 @@ namespace BlogOnline.Controllers
         }
 
 
-        //[HttpGet]
-        //public async Task<IActionResult> UpdateBlog(Guid id)
-        //{
-        //    var blog = await _blogService.GetBlogByIdAsync(id);
-        //    if (blog == null) return RedirectToAction(nameof(Index));
-        //    var locationList = await _locationService.GetAllLocationAsync();
-        //    var categoryList = await _categoryService.GetAllCategoryAsync();
-        //    ViewBag.LocationList = locationList;
-        //    ViewBag.CategoryList = categoryList;
-        //    ViewBag.Blog = blog;
-        //    return View();
-        //}
+        
 
 
         [HttpPut("update")]
-        public async Task<IActionResult> UpdateBlog([FromBody] BlogDto form)
+        public async Task<IActionResult> UpdateBlog([FromForm]BlogDto form)
         {
             if (!ModelState.IsValid)
             {
@@ -102,7 +86,7 @@ namespace BlogOnline.Controllers
         [HttpGet("search")]
         public async Task<IActionResult> SearchBlog([FromQuery]string? searchString)
         {
-            if (searchString.IsNullOrEmpty()) return Ok(new List<Blog>());
+            if (searchString.IsNullOrEmpty()) return Ok(new List<BlogRes>());
             var searchResult = await _blogService.SearchBlogAsync(searchString);
             return Ok(searchResult);
         }

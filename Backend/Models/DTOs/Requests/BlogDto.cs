@@ -20,6 +20,6 @@ namespace BlogOnline.Models.DTOs.Requests
         public bool IsPublic { get; set; } 
         [Required]
         public Guid CategoryId { get; set; }
-        public DateTime? PublictDate { get; set; } = DateTime.Now;
+        public DateTime? PublicDate { get; set; }
     }
 }

@@ -4,8 +4,11 @@ import { Location } from '../models/Location'
 import apiClient from '../api/http-common'
 import formatDate from '../utils/formatDate'
 import { Blog } from '../models/Blog'
-import { ToastContainer, toast } from 'react-toastify'
+import { ToastContainer } from 'react-toastify'
+import { Textbox } from 'react-inputs-validation'
+import displayToast from '../utils/displayToast'
 import 'react-toastify/dist/ReactToastify.css'
+import { useNavigate } from 'react-router-dom'
 
 type BlogForm = Omit<Blog, 'category' | 'location' | 'image'> & {
   uploadImage?: File
@@ -18,17 +21,23 @@ type Props = {
 }
 
 const BlogCreateEdit: React.FC<Props> = ({ data }) => {
-  const [categoryList, setCategoryList] = useState<Category[]>()
-  const [locationList, setLocationList] = useState<Location[]>()
-  const [blogTitle, setBlogTitle] = useState<string>('')
-  const [blogShortDescription, setBlogShortDescription] = useState<string>('')
-  const [blogContent, setBlogContent] = useState<string>('')
-  const [locationId, setLocationId] = useState<string>('')
-  const [categoryId, setCategoryId] = useState<string>('')
+  const navigate = useNavigate()
+  const [blogId, setBlogId] = useState<string>(data?.id ?? '')
+  const [blogTitle, setBlogTitle] = useState<string>(data?.title ?? '')
+  const [categoryList, setCategoryList] = useState<Category[]>([])
+  const [locationList, setLocationList] = useState<Location[]>([])
+  const [blogShortDescription, setBlogShortDescription] = useState<string>(
+    data?.shortDescription ?? ''
+  )
+  const [blogContent, setBlogContent] = useState<string>(data?.content ?? '')
+  const [locationId, setLocationId] = useState<string>(data?.location.id ?? '')
+  const [categoryId, setCategoryId] = useState<string>(data?.category.id ?? '')
   const [blogImage, setBlogImage] = useState<File>()
-  const [isPublic, setIsPublic] = useState<boolean>(true)
+  const [isPublic, setIsPublic] = useState<boolean>(data?.isPublic ?? true)
   const [publicDate, setPublicDate] = useState<string>(
-    formatDate(new Date().toDateString())
+    data?.publicDate
+      ? formatDate(data?.publicDate)
+      : formatDate(new Date().toDateString())
   )
 
   useEffect(() => {
@@ -36,7 +45,10 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
       .get<Category[]>('/category')
       .then((res) => {
         const categories: Category[] = res.data
-        setCategoryId(categories?.[0].id ?? '')
+        if (!categoryId) {
+          console.log('categoryId reset')
+          setCategoryId(categories?.[0].id ?? '')
+        }
         setCategoryList(categories)
       })
       .catch((err) => {
@@ -46,13 +58,16 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
       .get('/location')
       .then((res) => {
         const locations: Location[] = res.data
-        setLocationId(locations?.[0].id ?? '')
+        if (!locationId) {
+          console.log('locationId reset')
+          setLocationId(locations?.[0].id ?? '')
+        }
         setLocationList(locations)
       })
       .catch((err) => console.log(err))
   }, [])
 
-  const createNewBlog = (): void => {
+  const getFormData = (): FormData => {
     var formData = new FormData()
     formData.append('title', blogTitle)
     formData.append('shortDescription', blogShortDescription ?? '')
@@ -60,10 +75,15 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
     formData.append('locationId', locationId)
     formData.append('categoryId', categoryId)
     formData.append('isPublic', isPublic.toString())
-    formData.append('publicDate', publicDate ?? '')
+    formData.append('publicDate', new Date(publicDate).toISOString())
     if (blogImage) {
       formData.append('image', blogImage)
     }
+    return formData
+  }
+
+  const createNewBlog = (): void => {
+    const formData: FormData = getFormData()
     apiClient
       .post('/blog/add', formData, {
         headers: {
@@ -72,32 +92,45 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
       })
       .then((response) => {
         console.log(response.data)
-        toast.success('Create new blog successfully', {
-          position: 'top-right',
-          autoClose: 2000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: true,
-          progress: undefined,
-          theme: 'light',
-        })
+        displayToast('success', 'Create new blog successfully')
       })
       .catch((err) => {
         console.log(err)
-        toast.error('Failed to create blog!', {
-          position: 'top-right',
-          autoClose: 2000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: true,
-          progress: undefined,
-          theme: 'light',
-        })
+        displayToast('error', 'Failed to create blog!')
       })
   }
 
+  const updateBlog = (): void => {
+    const formData: FormData = getFormData()
+    formData.append('id', blogId)
+    formData.forEach((data) => console.log(data))
+    apiClient
+      .put('/blog/update', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      .then((response) => {
+        console.log(response.data)
+        displayToast('success', 'Update the blog successfully')
+        const timer = setInterval(()=>navigate('/'), 1000)
+       
+      })
+      .catch((err) => {
+        console.log(err)
+        displayToast('error', 'Failed to update blog!')
+      })
+  }
+
+  const clearForm = () => {
+    setBlogTitle('')
+    setBlogShortDescription('')
+    setBlogContent('')
+    setLocationId(locationList?.[0]?.id ?? '')
+    setCategoryId(categoryList?.[0]?.id ?? '')
+    setIsPublic(true)
+    setPublicDate(formatDate(new Date().toDateString()))
+  }
   return (
     <div className="card shadow m-4">
       <div className="card-header py-3">
@@ -107,32 +140,81 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
       </div>
       <div className="card-body">
         <form id="blog-form" method="post" encType="multipart/form-data">
+          <input type="text" value={blogId} style={{ display: 'none' }} />
           <div className="form-group">
             <label htmlFor="exampleFormControlInput1">Title:</label>
-            <input
+            <Textbox
+              attributesInput={{
+                id: 'exampleFormControlInput1',
+                placeholder: 'Enter title here',
+                type: 'text',
+              }}
+              classNameInput="form-control"
+              value={blogTitle}
+              onChange={(title, e) => {
+                setBlogTitle(title)
+              }}
+              onBlur={(e) => {}}
+              validationOption={{
+                name: 'Blog title',
+                check: true,
+                required: true,
+                customFunc: (title: string) => {
+                  if (title.length < 50 && title.length > 2) {
+                    return true
+                  } else {
+                    return 'The blog title must be between 2 and 50 characters'
+                  }
+                },
+              }}
+            />
+            {/* <input
               type="text"
               className="form-control"
               id="exampleFormControlInput1"
               placeholder="Enter title here..."
-              value={data?.title}
+              value={blogTitle}
               onChange={(e) => setBlogTitle(e.target.value)}
-            />
-            <span className="text-danger" asp-validation-for="Title" />
+            /> */}
           </div>
           <div className="form-group">
             <label htmlFor="exampleFormControlInput1">Short Description:</label>
-            <input
+            <Textbox
+              attributesInput={{
+                id: 'exampleFormControlInput1',
+                placeholder: 'Enter short description here',
+                type: 'text',
+              }}
+              classNameInput="form-control"
+              value={blogShortDescription}
+              onChange={(shortDescription, e) => {
+                setBlogShortDescription(shortDescription)
+              }}
+              onBlur={(e) => {}}
+              validationOption={{
+                name: 'Short description',
+                check: true,
+                required: true,
+                customFunc: (shortDescription: string) => {
+                  if (
+                    shortDescription.length < 100 &&
+                    shortDescription.length > 2
+                  ) {
+                    return true
+                  } else {
+                    return 'The blog short description must be between 2 and 100 characters'
+                  }
+                },
+              }}
+            />
+            {/* <input
               type="text"
               className="form-control"
               id="exampleFormControlInput1"
               placeholder="Enter short description here..."
-              value={data?.shortDescription}
+              value={blogShortDescription}
               onChange={(e) => setBlogShortDescription(e.target.value)}
-            />
-            <span
-              className="text-danger"
-              asp-validation-for="ShortDescription"
-            />
+            /> */}
           </div>
           <div className="form-group">
             <label htmlFor="exampleFormControlTextarea1">Content:</label>
@@ -141,7 +223,7 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
               id="exampleFormControlTextarea1"
               rows={3}
               defaultValue={''}
-              value={data?.content}
+              value={blogContent}
               onChange={(e) => setBlogContent(e.target.value)}
             />
             <span className="text-danger" asp-validation-for="Content" />
@@ -171,8 +253,7 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
                   name="flexRadioDefault"
                   id="flexRadioDefault1"
                   value={location.id}
-                  defaultChecked={index === 0}
-                  checked={data?.location.id === location.id}
+                  checked={locationId === location.id}
                   onChange={(e) => setLocationId(e.target.value)}
                 />
                 <label className="form-check-label">{location.name}</label>
@@ -186,7 +267,7 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
                 <input
                   className="form-check-input"
                   type="radio"
-                  checked={data?.isPublic}
+                  checked={isPublic}
                   onChange={(e) => setIsPublic(true)}
                 />
                 <label className="form-check-label" htmlFor="flexRadioDefault1">
@@ -198,7 +279,7 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
                   className="form-check-input"
                   type="radio"
                   onChange={(e) => setIsPublic(false)}
-                  checked={!data?.isPublic}
+                  checked={!isPublic}
                 />
                 <label className="form-check-label" htmlFor="flexRadioDefault2">
                   No
@@ -214,7 +295,7 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
                 <select
                   className="form-control"
                   aria-label=".form-select-lg example"
-                  value={data?.category.id}
+                  value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                 >
                   {categoryList?.map((category) => (
@@ -232,9 +313,7 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
                   type="date"
                   className="form-control"
                   id="exampleFormControlInput1"
-                  value={
-                    data?.publicDate ? formatDate(data?.publicDate) : publicDate
-                  }
+                  value={publicDate}
                   onChange={(e) => setPublicDate(e.target.value)}
                 />
                 <span
@@ -249,15 +328,22 @@ const BlogCreateEdit: React.FC<Props> = ({ data }) => {
             <div className="d-flex gap-2">
               <input
                 type="button"
-                defaultValue="Create"
+                value={data ? 'Update' : 'Create'}
                 className="btn btn-success mr-3"
-                onClick={() => createNewBlog()}
+                onClick={() => {
+                  if (!data) {
+                    createNewBlog()
+                  } else {
+                    updateBlog()
+                  }
+                }}
               />
 
               <input
                 type="button"
                 defaultValue="Clear"
                 className="btn btn-primary"
+                onClick={() => clearForm()}
               />
             </div>
           </div>

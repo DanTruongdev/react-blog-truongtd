@@ -27,7 +27,7 @@ namespace BlogOnline.Services.Services
                 LocationId = form.LocationId,
                 IsPublic = form.IsPublic,
                 CategoryId = form.CategoryId,
-                PublictDate = form.PublictDate.Value,
+                PublictDate = form.PublicDate.Value,
             };
             try
             {
@@ -111,11 +111,32 @@ namespace BlogOnline.Services.Services
             }
         }
 
-        public async Task<IEnumerable<Blog>> SearchBlogAsync(string searchString)
+        public async Task<IEnumerable<BlogRes>> SearchBlogAsync(string searchString)
         {
             var searchResult = await _blogRepository.SearchAsync(b => b.Title.Contains(searchString));
-            if (!searchResult.Any()) return new List<Blog>();
-            return searchResult;
+            if (!searchResult.Any()) return new List<BlogRes>();
+            var returnData = searchResult.Select(b => new BlogRes
+            {
+                Id = b.Id,
+                Title = b.Title,
+                ShortDescription = b.ShortDescription,
+                Content = b.Content,
+                Image = b.Image,
+                Location = new LocationRes
+                {
+                    Id = b.LocationId,
+                    Name = b.Location.Name
+                },
+                IsPublic = b.IsPublic,
+                Category = new CategoryRes
+                {
+                    Id = b.Category.Id,
+                    Name = b.Category.Name
+                },
+                PublicDate = b.PublictDate
+
+            });
+            return returnData;
         }
 
         public async Task<bool> UpdateBlogAsync(BlogDto form)
@@ -133,7 +154,7 @@ namespace BlogOnline.Services.Services
                 blogExisting.LocationId = form.LocationId;
                 blogExisting.IsPublic = form.IsPublic;
                 blogExisting.CategoryId = form.CategoryId;
-                blogExisting.PublictDate = form.PublictDate.HasValue ? form.PublictDate.Value : DateTime.Now;
+                blogExisting.PublictDate = form.PublicDate.HasValue ? form.PublicDate.Value : DateTime.Now;
                 var updateResult = await _blogRepository.UpdateAsync(blogExisting);
                 return true;
             }

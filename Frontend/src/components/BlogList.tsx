@@ -5,14 +5,17 @@ import { Modal, Button } from 'react-bootstrap'
 import apiClient from '../api/http-common'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import useBlogStore from '../store/store'
+import useBlogStore from '../hooks/store'
 import { useNavigate } from 'react-router-dom'
+import displayToast from '../utils/displayToast'
 
 interface BlogProps {
   children?: React.ReactNode
+  blogs?: Blog[]
 }
 
-const BlogList: React.FC<BlogProps> = ({ children }) => {
+const BlogList: React.FC<BlogProps> = ({ children, blogs }) => {
+  console.log(blogs)
   const [isShowModel, setIsShowModel] = useState<boolean>(false)
   const [blogId, setBlogId] = useState<string>('')
   const [blogList, setBlogList] = useState<Blog[]>([])
@@ -30,29 +33,11 @@ const BlogList: React.FC<BlogProps> = ({ children }) => {
         console.log(res.data)
         const blogListUpdated = blogList.filter((blog) => blog.id !== id)
         setBlogList(blogListUpdated)
-        toast.success('Remove blog successfully', {
-          position: 'top-right',
-          autoClose: 2000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: true,
-          progress: undefined,
-          theme: 'light',
-        })
+        displayToast('success', 'Blog deleted successfully')
       })
       .catch((err) => {
         console.error(err)
-        toast.error('Failed to remove blog', {
-          position: 'top-right',
-          autoClose: 2000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: true,
-          progress: undefined,
-          theme: 'light',
-        })
+        displayToast('error', 'Failed to delete blog')
       })
   }
 
@@ -60,17 +45,23 @@ const BlogList: React.FC<BlogProps> = ({ children }) => {
     setBlogIdData(blogId)
     navigate('/update')
   }
+
   useEffect(() => {
-    apiClient
-      .get<Blog[]>('/blog')
-      .then((res) => {
-        const blogList: Blog[] = res.data
-        setBlogList(blogList)
-      })
-      .catch((err) => {
-        console.error(err)
-      })
-  }, [])
+    if (!blogs) {
+      apiClient
+        .get<Blog[]>('/blog')
+        .then((res) => {
+          console.log('from child')
+          const blogList: Blog[] = res.data
+          setBlogList(blogList)
+        })
+        .catch((err) => {
+          console.error(err)
+        })
+    } else {
+      setBlogList(blogs)
+    }
+  }, [blogs])
 
   return (
     <div>
@@ -114,7 +105,7 @@ const BlogList: React.FC<BlogProps> = ({ children }) => {
                   <th>Category</th>
                   <th>Public</th>
                   <th>Location</th>
-                  <th>Image</th>
+                  {/* <th>Image</th> */}
                   <th>Public Date</th>
                   <th>Edit</th>
                   <th>Delete</th>
@@ -128,9 +119,9 @@ const BlogList: React.FC<BlogProps> = ({ children }) => {
                     <td>{blog.category.name}</td>
                     <td>{blog.isPublic ? 'Yes' : 'No'}</td>
                     <td>{blog.location.name}</td>
-                    <td className="text-center">
+                    {/* <td className="text-center">
                       <img src={blog.image} alt={blog.title} width="80px" />
-                    </td>
+                    </td> */}
                     <td>{formatDate(blog.publicDate)}</td>
                     <td>
                       <button

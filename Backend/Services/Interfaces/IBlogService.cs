@@ -13,6 +13,6 @@ namespace BlogOnline.Services
         public Task<Blog> AddBlogAsync(BlogDto form);
         public Task<bool> UpdateBlogAsync(BlogDto form);
         public Task<bool> RemoveBlogAsync(Guid id);
-        public Task<IEnumerable<Blog>> SearchBlogAsync(string searchString);
+        public Task<IEnumerable<BlogRes>> SearchBlogAsync(string searchString);
     }
 }
